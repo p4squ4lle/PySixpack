@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 class SIXpack2():
     # =============================================================================
-    # Initialize Sixpack Controller
+    # Initialize Communication with Sixpack Controller
     # =============================================================================
 
     def __init__(self, port='/dev/ttyUSB4',
