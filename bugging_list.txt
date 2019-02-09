@@ -1,0 +1,18 @@
+- serial.flush() what does it do?
+
+- sixback_controller.py: send_request:
+    funktioniert self.ser.read(9) oder kann man das auch mit 'while self.ser.in_waiting(): [..]' lösen?
+    vlt gehts auch mit self.ser.readline()
+
+- bei der initialisierung der seriellen schnittstelle kann man auch ein dictonary für die parameter benutzen:
+  apply_settings(dict)
+
+smaract:
+
+  - communication.py file:
+    - @comm_error_handler; how can i implement this?
+    - socketCom; ist das für windows?
+    - class SerialCom erbt von Serial und kann daher einfach deren Funktionen übernehmen (write, reakline, ...)
+
+  - axis.py:
+    - what is weakref? 'import weakref'
