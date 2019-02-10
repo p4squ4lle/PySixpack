@@ -7,6 +7,8 @@
 - bei der initialisierung der seriellen schnittstelle kann man auch ein dictonary für die parameter benutzen:
   apply_settings(dict)
 
+- Serial exceptions mit einbauen?
+
 smaract:
 
   - communication.py file:

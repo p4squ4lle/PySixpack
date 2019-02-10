@@ -37,13 +37,25 @@ def send_command(command):
     Encode and send command
     """
     print('Sending command..')
+    print('----------------------------------')
 
     command = sixpack_addr + command
 
     command_bytes = bytes.fromhex(command)
 
+    x = ser.out_waiting()
+    print('bytes waiting in output buffer before writing anything: {}'.format(x))
+    y = ser.in_waiting()
+    print('bytes waiting in input buffer before writing anything: {}'.format(y))
+
+    print('----------------------------------')
+    print('Now really sending the command...')
+
     ser.write(command_bytes)
 
+    print('----------------------------------')
+    x = ser.out_waiting()
+    print('bytes waiting in output buffer after writing cmd: {}'.format(x))
     y = ser.in_waiting()
     print('bytes waiting in input buffer after writing cmd: {}'.format(y))
 
@@ -60,21 +72,35 @@ def send_request(request):
     """
 
     print('Sending request..')
-
+    print('----------------------------------')
 
     request = sixpack_addr + request
     request_bytes = bytes.fromhex(request)
 
     x = ser.out_waiting()
-    print('bytes waiting in output buffer before writing anything: {}'.format(x))
+    print('# of bytes waiting in output buffer before writing anything: {}'.format(x))
     y = ser.in_waiting()
-    print('bytes waiting in input buffer before writing anything: {}'.format(y))
+    print('# of bytes waiting in input buffer before writing anything: {}'.format(y))
+
+    print('Now really sending the request...')
+    print('----------------------------------')
 
     ser.write(request_bytes)
     last_request = request
 
+    x = ser.out_waiting()
+    print('# of bytes waiting in output buffer after writing request: {}'.format(x))
+    y = ser.in_waiting()
+    print('# of bytes waiting in input buffer after writing request: {}'.format(y))
+
     reply_bytes = ser.read(9)          # bugging list
     reply_hex = reply_bytes.hex()
+
+    print('----------------------------------')
+    x = ser.out_waiting()
+    print('# of bytes waiting in output buffer after reading reply: {}'.format(x))
+    y = ser.in_waiting()
+    print('# of bytes waiting in input buffer after reading reply: {}'.format(y))
 
     reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
                                        'p1', 'p2', 'p3',
@@ -97,6 +123,9 @@ def send_request(request):
 
 def encode_param(param, num_bytes=4):
     # check whether each given param results in 4/8 (!) digit hex string
+
+    print('Encoding parameter...')
+    print('----------------------------------')
 
     parameter = ''
 
@@ -122,6 +151,9 @@ def encode_param(param, num_bytes=4):
 
 def decode_param(param, signed=True):
 
+    print('Decoding parameter...')
+    print('----------------------------------')
+
     max_value = 1 << (8 * len(param))
 
     value = sum(b << i*8 for i, b in enumerate(param))
@@ -141,6 +173,9 @@ def get_unit_info():
     Allows to read out firmware revision, reset-flag, temperature
     and serail number
     """
+
+    print('Getting unit info...')
+    print('----------------------------------')
 
     request = '43{0:x}'.format(resp_addr) + 6*'00'
     reply = send_request(request)
