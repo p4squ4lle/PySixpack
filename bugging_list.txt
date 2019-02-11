@@ -1,11 +1,31 @@
 - serial.flush() what does it do?
 
+- nachsehen wie die DIP-Switches eingestellt sind
+
+- im windows programm nachsehen: ref_search_params(): wie werden die debounce times übermittelt?
+                                 befehle von 7.3 additional inputs / outputs
+                                 befehle von 7.4 adjust baudrate usw.: increments of 2 ms, bedeutet das 6ms=3 ?
+                                 hw_reset: einfach nur 'CC00000000' ?
+
 - sixback_controller.py: send_request:
-    funktioniert self.ser.read(9) oder kann man das auch mit 'while self.ser.in_waiting(): [..]' lösen?
-    vlt gehts auch mit self.ser.readline()
+    - funktioniert self.ser.read(9) oder kann man das auch mit 'while self.ser.in_waiting(): [..]' lösen?
+      vlt gehts auch mit self.ser.readline()
+
+- set_add_outputs(): kann man über die argumente der funktion iterieren (irgendwie so: format(*args))
 
 - bei der initialisierung der seriellen schnittstelle kann man auch ein dictonary für die parameter benutzen:
   apply_settings(dict)
+
+- fct. ref_search_params(): die Bedingung, dass alle motoren stehen sollten, bevor die parameter geändert werden,
+                            sollte im code implementiert werden
+
+- constants.py:
+  - ich denke es wäre nicht schlecht im constants modul auch funktionen zu haben die Antwortbytes
+    in aussagekräftige meldungen umcodieren
+
+
+
+
 
 smaract:
 

@@ -31,6 +31,10 @@ last_request = ''
 status_dict = {'motor{}'.format(i+1): None
                for i in range(num_motors)}
 
+action_dict = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
+               15: 'rotation', (20, 29): 'reference switch search',
+               30: 'mechanical reference'}
+
 
 def send_command(command):
     """
@@ -192,12 +196,111 @@ def get_unit_info():
     return firmware, reset_flag, pack_temp, serial_n
 
 
-# cmd = '43'
-#
-# ser.write(word)
-#
-# print(word)
-#
-# out = ser.readline()
-#
-# print(out)
+def get_pos(motno):
+    """
+    Queries position and activity of given motor
+    (motno: 0...num_motors)
+    """
+
+    print('getting position of specified motor....')
+
+    request = '200{0}{1:x}'.format(motno, resp_addr) + 5 * '00'
+    reply = send_request(request)
+
+    motno = reply['p0']
+    print('Motornumber: {}'.format(motno))
+
+    posact = decode_param([reply['p1'], reply['p2'],
+                           reply['p3'], reply['p4']])
+    print('Position of motor {0}: {1}'.format(motno, posact))
+
+    act = reply['p5']
+    if act in action_dict:
+        action = action_dict[act]
+    else:
+        action = 'reference switch search'
+
+    print('Action of motor {0}: {1}'.format(motno, action))
+
+    status_dict['motor{}'.format(motno)] = reply['p5']
+
+    stop_status = reply['p6']
+    print('Stop status: {}'.format(stop_status))
+    return motno, posact, action, stop_status
+
+
+# =============================================================================
+# Move Motor
+# =============================================================================
+
+def start_ref_search(motno):
+
+    """
+    Starts search of reference switch
+    """
+
+    command = '220{}'.format(motno) + 6 * '00'
+    send_command(command)
+
+    return None
+
+
+def start_ramp(motno, targetpos):
+
+    targetpos = encode_param(targetpos)
+
+    command = '230{0}{1}'.format(motno, targetpos) + 2 * '00'
+    send_command(command)
+
+    return None
+
+
+def rotate(motno, rotvel):
+
+    rotvel = encode_param(rotvel, num_bytes=2)
+
+    command = '250{0}{1}'.format(motno, rotvel) + 4 * '00'
+    send_command(command)
+
+    return None
+
+
+def stop_motors(mask):
+
+    command = '2A{}'.format(mask) + 6 * '00'
+    send_command(command)
+
+    return None
+
+
+def abort_ref_search(motno):
+    """
+    Aborts reference search of the specified motor
+    """
+
+    command = '2B0{}'.format(motno) + 6 * '00'
+    send_command(command)
+
+    return None
+
+
+# =============================================================================
+# Additional Inputs/Outputs
+# =============================================================================
+
+def read_input_channels(channelno, resp_addr):
+
+    request = '300{0}{1}'.format(channelno, resp_addr) + 5 * '00'
+    reply = send_request(request)
+
+    channelno = reply['p0']
+
+    analogue_value = reply['p1']
+
+    ref_input = reply['p3']
+
+    all_ref_inputs = reply['p4']    # um die Bedeutung herauszubekommen müsste man hier wieder in binär umrechnen
+
+    logic_state_TTLIO1 = reply['p5']
+
+    return reply, channelno, analogue_value, ref_input, all_ref_inputs, logic_state_TTLIO1

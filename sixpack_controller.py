@@ -28,9 +28,9 @@ class SIXpack2():
         self.status_dict = {'motor{}'.format(i+1): None
                             for i in range(self.num_motors)}
 
-# =============================================================================
-# Send command and request reply
-# =====================================================================
+    # =====================================================================
+    # Send command and request reply
+    # =====================================================================
 
     def send_command(self, command):
         """
@@ -77,51 +77,50 @@ class SIXpack2():
 
         return reply_dict
 
+    # =============================================================================
+    # Encode and decode parameter
+    # =============================================================================
 
-# =============================================================================
-# Encode and decode parameter
-# =============================================================================
+    @staticmethod
+    def encode_param(param, num_bytes=4):
+        # check whether each given param results in 4/8 (!) digit hex string
 
-def encode_param(self, param, num_bytes=4):
-    # check whether each given param results in 4/8 (!) digit hex string
+        parameter = ''
 
-    parameter = ''
+        max_value = 1 << (8*num_bytes)
 
-    max_value = 1 << (8*num_bytes)
+        # do this better!
+        if param < 0 and 2 * abs(param) < max_value:
+            param += max_value
+        elif param > max_value:
+            raise ValueError('parameter out of range')
 
-    # do this better!
-    if param < 0 and 2 * abs(param) < max_value:
-        param += max_value
-    elif param > max_value:
-        raise ValueError('parameter out of range')
+        param_hex = '{:x}'.format(param)
 
-    param_hex = '{:x}'.format(param)
+        checksum = 2 * num_bytes - len(param_hex)
+        if checksum != 0:
+            param_hex = checksum * '0' + param_hex
 
-    checksum = 2 * num_bytes - len(param_hex)
-    if checksum != 0:
-        param_hex = checksum * '0' + param_hex
+        for i in reversed(range(num_bytes)):
+            parameter += param_hex[2*i:2*i+2]
 
-    for i in reversed(range(num_bytes)):
-        parameter += param_hex[2*i:2*i+2]
+        return parameter
 
-    return parameter
+    @staticmethod
+    def decode_param(param, signed=True):
 
+        max_value = 1 << (8 * len(param))
 
-def decode_param(self, param, signed=True):
+        value = sum(b << i*8 for i, b in enumerate(param))
 
-    max_value = 1 << (8 * len(param))
+        if signed and value >= max_value/2:
+            value -= max_value
 
-    value = sum(b << i*8 for i, b in enumerate(param))
+        return value
 
-    if signed and value >= max_value/2:
-        value -= max_value
-
-    return value
-
-
-# =============================================================================
-# Get Unit Information
-# =============================================================================
+    # =============================================================================
+    # Get Unit Information
+    # =============================================================================
 
     def get_unit_info(self):
         """
@@ -184,10 +183,9 @@ def decode_param(self, param, signed=True):
 
         return motno, velact, action
 
-
-# =============================================================================
-#
-# =============================================================================
+    # =============================================================================
+    # Moving the motors
+    # =============================================================================
 
     def start_ref_search(self, motno):
 
@@ -279,10 +277,9 @@ def decode_param(self, param, signed=True):
 
         return None
 
-
-# =============================================================================
-# Setting motor parameters
-# =============================================================================
+    # =============================================================================
+    # Setting motor parameters
+    # =============================================================================
 
     def set_peak_current(self, motno, value):
 
@@ -347,9 +344,168 @@ def decode_param(self, param, signed=True):
         return None
 
 
-# =============================================================================
-# Closing Serial Port
-# =============================================================================
+    def ref_search_params(self, motno, vrefmax, debounce, stop_after=0):
+        """
+        change parameters for fast reference search
+        (change only with motors standing still)
+        """
+
+        vrefmax = self.encode_param(vrefmax, num_bytes=2)   # 511 >= vmax >= vrefmax >= vstart
+
+        debounce = self.encode_param(debounce, num_bytes=2)     # muss noch ordentlich parametrisiert werden
+
+        cmd = '160{0}{1}{2}0{3}'.format(motno, vrefmax, debounce, stop_after)
+        self.send_command(cmd)
+
+        return None
+
+    def write_motor_char_table(self, pointer, entries):
+        # nochmal vestehen was die funktion genau macht
+
+        if pointer % 4 != 0:
+            raise ValueError("Parameter 'pointer' not allowed. Allowed values: 0, 4, 8, 12. \
+                             (value given: {})".format(pointer))
+        else:
+            pointer = self.encode_param(pointer, num_bytes=1)
+
+        for i, v in enumerate(entries):
+            entries[i] = self.encode_param(v, num_bytes=1)
+
+        cmd = '17{0}{1}{2}{3}{4}'.format(pointer, *entries) + 2 * '00'
+        # weiß nich ob das so funktioniert
+        self.send_command(cmd)
+
+        return None
+
+    def set_nulloffset_nullrange(self, motno, nulloffset, nullrange):
+
+        nulloffset = self.encode_param(nulloffset, num_bytes=4)
+        nullrange = self.encode_param(nullrange, num_bytes=2)
+
+        cmd = '180{0}{1}{2}'.format(motno, nulloffset, nullrange)
+        self.send_command(cmd)
+
+        return None
+
+    def set_PI_parameter(self, motno, propdiv, intdiv, intclip, intinclip):
+
+        propdiv = self.encode_param(propdiv, num_bytes=1)
+        intdiv = self.encode_param(intdiv, num_bytes=2)
+        intclip = self.encode_param(intclip, num_bytes=2)
+        intinclip = self.encode_param(intinclip, num_bytes=1)
+
+        cmd = '190{0}{1}{2}{3}{4}'.format(motno, propdiv, intdiv,
+                                          intclip, intinclip)
+        self.send_command(cmd)
+
+        return None
+
+    # =============================================================================
+    # Additional Inputs/Outputs
+    # =============================================================================
+
+    def read_input_channels(self, channelno, resp_addr):
+
+        resp_addr = self._resp_addr
+
+        request = '300{0}{1}'.format(channelno, resp_addr) + 5 * '00'
+        reply = self.send_request(request)
+
+        channelno = reply['p0']
+
+        analogue_value = reply['p1']
+
+        ref_input = reply['p3']
+
+        all_ref_inputs = reply['p4']    # um die Bedeutung herauszubekommen müsste man hier wieder in binär umrechnen
+
+        logic_state_TTLIO1 = reply['p5']
+
+        return reply, channelno, analogue_value, ref_input, all_ref_inputs, logic_state_TTLIO1
+
+    def set_limits_stop_func(self, channelno, min_value_left=0, max_value_right=1023):
+
+        min_value_left = self.encode_param(min_value_left, num_bytes=2)
+        max_value_right = self.encode_param(max_value_right, num_bytes=2)
+
+        cmd = '310{0}{1}{2}'.format(channelno, min_value_left, max_value_right) + 2 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    def set_add_outputs(self, logic_state_TTLOUT1, TTLIO1, logic_state_TTLIO1, TTLOUT1_ready):
+
+        cmd = '320{0}{1}{2}{3}'.format(logic_state_TTLOUT1, TTLIO1, logic_state_TTLIO1, TTLOUT1_ready)
+        cmd += 3 * '00'
+
+        self.send_command(cmd)
+
+        return None
+
+    def set_ready_output_func(self, motormask, refsearchmask):
+
+        cmd = '33{0}{1}'.format(motormask, refsearchmask) + 5 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    # =============================================================================
+    # Other Settings
+    # =============================================================================
+
+    def adjust_baudrate(self, baudratedivisor, transmitter_delay=3):
+
+        baudratedivisor = self.encode_param(baudratedivisor, num_bytes=2)
+        transmitter_delay = self.encode_param(transmitter_delay, num_bytes=2)
+
+        cmd = '40{0}{1}'.format(baudratedivisor, transmitter_delay) + 3 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    def set_abort_timeout(self, abort_timeout):
+
+        abort_timeout = self.encode_param(abort_timeout, num_bytes=2)
+
+        cmd = '41{0}'.format(abort_timeout) + 5 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    def change_unit_address(self, unit_address):
+
+        unit_address = self.encode_param(unit_address, num_bytes=1)
+
+        cmd = '42{0}'.format(unit_address) + 6 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    def complete_hwreset(self):
+
+        cmd = 'CC' + 7 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    # =============================================================================
+    # Multi-dimensional movement
+    # =============================================================================
+
+    def start_multi_movement(self, motormask):
+
+        cmd = '50{0}'.format(motormask) + 6 * '00'
+        self.send_command(cmd)
+
+        return None
+
+    # =============================================================================
+    # Service functions
+    # =============================================================================
+
+    # =============================================================================
+    # Closing Serial Port
+    # =============================================================================
 
     def __del__(self):
         self._ser.close()
