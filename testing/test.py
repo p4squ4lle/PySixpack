@@ -46,19 +46,8 @@ def send_command(command):
 
     command_bytes = bytes.fromhex(command)
 
-    y = ser.inWaiting()
-    print('bytes waiting in input buffer before writing anything: {}'.format(y))
-
-    print('----------------------------------')
-    print('Now really sending the command...')
-
     ser.reset_output_buffer()
     ser.write(command_bytes)
-
-    print('----------------------------------')
-    
-    y = ser.inWaiting()
-    print('bytes waiting in input buffer after writing cmd: {}'.format(y))
 
     last_command = command
 
@@ -83,7 +72,7 @@ def send_request(request):
 
     print('Now really sending the request...')
     print('----------------------------------')
-    
+
     ser.reset_output_buffer()
     ser.write(request_bytes)
     last_request = request
@@ -173,7 +162,7 @@ def get_unit_info():
 
     print('Getting unit info...')
     print('----------------------------------')
-    
+
     request = '43{0}'.format(resp_addr) + 6*'00'
     reply = send_request(request)
 
@@ -243,7 +232,7 @@ def get_vel(motno):
             action = action_dict[action]
         else:
             action  = 'reference switch search'
-        
+
         status_dict['motor{}'.format(motno)] = reply['p3']
 
         return motno, velact, action

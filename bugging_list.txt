@@ -2,6 +2,8 @@
   send_cmd/request reingeschrieben; (vgl. ser.flush() in smaract communication.py);
   müsste man evtl nochmal testen ob dadurch probleme aufkommen beim senden oder empfangen von queries
 
+- das mit dem last_command/request funktioniert nicht (wird nicht zurückgegeben)
+
 - action_dict implementieren (für befehl get_pos() und get_vel())
 
 - vielleicht ist es besser alle hex umwandlungen der fkt encode_param zu überlassen
