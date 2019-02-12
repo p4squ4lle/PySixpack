@@ -10,9 +10,8 @@
 from serial import Serial
 from collections import OrderedDict
 
-ser = Serial(port='/dev/ttySIXPACK',
-             baudrate=19200,
-             timeout=None)
+ser = Serial(port='/dev/ttyUSB2',
+             baudrate=19200)
 
 x = ser.isOpen()
 if x is True:
@@ -47,20 +46,18 @@ def send_command(command):
 
     command_bytes = bytes.fromhex(command)
 
-    x = ser.out_waiting()
-    print('bytes waiting in output buffer before writing anything: {}'.format(x))
-    y = ser.in_waiting()
+    y = ser.inWaiting()
     print('bytes waiting in input buffer before writing anything: {}'.format(y))
 
     print('----------------------------------')
     print('Now really sending the command...')
 
+    ser.reset_output_buffer()
     ser.write(command_bytes)
 
     print('----------------------------------')
-    x = ser.out_waiting()
-    print('bytes waiting in output buffer after writing cmd: {}'.format(x))
-    y = ser.in_waiting()
+    
+    y = ser.inWaiting()
     print('bytes waiting in input buffer after writing cmd: {}'.format(y))
 
     last_command = command
@@ -81,29 +78,25 @@ def send_request(request):
     request = sixpack_addr + request
     request_bytes = bytes.fromhex(request)
 
-    x = ser.out_waiting()
-    print('# of bytes waiting in output buffer before writing anything: {}'.format(x))
-    y = ser.in_waiting()
+    y = ser.inWaiting()
     print('# of bytes waiting in input buffer before writing anything: {}'.format(y))
 
     print('Now really sending the request...')
     print('----------------------------------')
-
+    
+    ser.reset_output_buffer()
     ser.write(request_bytes)
     last_request = request
 
-    x = ser.out_waiting()
-    print('# of bytes waiting in output buffer after writing request: {}'.format(x))
-    y = ser.in_waiting()
+    y = ser.inWaiting()
     print('# of bytes waiting in input buffer after writing request: {}'.format(y))
 
-    reply_bytes = ser.read(9)          # bugging list
+    ser.reset_input_buffer()
+    reply_bytes = ser.read(9)
     reply_hex = reply_bytes.hex()
 
     print('----------------------------------')
-    x = ser.out_waiting()
-    print('# of bytes waiting in output buffer after reading reply: {}'.format(x))
-    y = ser.in_waiting()
+    y = ser.inWaiting()
     print('# of bytes waiting in input buffer after reading reply: {}'.format(y))
 
     reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
@@ -113,12 +106,12 @@ def send_request(request):
     for i, k in enumerate(reply_dict):
         reply_dict[k] = int(reply_hex[2*i:2*i+2], 16)
 
-    if reply_dict['cmd'] != request[2:4]:
+    if reply_dict['cmd'] != int(request[2:4], 16):
         print('''Error: Response command nr ({0}) does not match
               requested command nr ({1})
               '''.format(reply_dict['cmd'], request[2:4]))
 
-    return last_request, reply_dict
+    return reply_dict
 
 
 # =============================================================================
@@ -135,7 +128,7 @@ def encode_param(param, num_bytes=4):
 
     max_value = 1 << (8*num_bytes)
 
-    # do this better!
+    param = int(param)
     if param < 0 and 2 * abs(param) < max_value:
         param += max_value
     elif param > max_value:
@@ -165,7 +158,7 @@ def decode_param(param, signed=True):
     if signed and value >= max_value/2:
         value -= max_value
 
-        return value
+    return value
 
 
 # =============================================================================
@@ -180,8 +173,8 @@ def get_unit_info():
 
     print('Getting unit info...')
     print('----------------------------------')
-
-    request = '43{0:x}'.format(resp_addr) + 6*'00'
+    
+    request = '43{0}'.format(resp_addr) + 6*'00'
     reply = send_request(request)
 
     firmware = reply['p0']
@@ -191,7 +184,8 @@ def get_unit_info():
 
     pack_temp = decode_param([reply['p2']])
 
-    serial_n = decode_param([reply['p3'], reply['p4']], signed=False)
+    serial_n = list(reply.values())[5:9]
+    serial_n = decode_param(serial_n, signed=False)
 
     return firmware, reset_flag, pack_temp, serial_n
 
@@ -204,7 +198,7 @@ def get_pos(motno):
 
     print('getting position of specified motor....')
 
-    request = '200{0}{1:x}'.format(motno, resp_addr) + 5 * '00'
+    request = '200{0}{1}'.format(motno, resp_addr) + 5 * '00'
     reply = send_request(request)
 
     motno = reply['p0']
@@ -227,6 +221,32 @@ def get_pos(motno):
     stop_status = reply['p6']
     print('Stop status: {}'.format(stop_status))
     return motno, posact, action, stop_status
+
+
+def get_vel(motno):
+        """
+        Queries velocity and activity of given motor
+        (motno: 0...num_motors)
+        """
+
+        request = '210{0}{1}'.format(motno, resp_addr) + 5 * '00'
+        reply = send_request(request)
+
+        motno = reply['p0']
+
+        velact = decode_param([reply['p1'], reply['p2']], signed=True)
+        # im windows programm nachschauen ob es auch
+        # negative geschwindigkeiten gibt
+
+        action = reply['p3']
+        if action in action_dict:
+            action = action_dict[action]
+        else:
+            action  = 'reference switch search'
+        
+        status_dict['motor{}'.format(motno)] = reply['p3']
+
+        return motno, velact, action
 
 
 # =============================================================================
@@ -267,7 +287,7 @@ def rotate(motno, rotvel):
 
 def stop_motors(mask):
 
-    command = '2A{}'.format(mask) + 6 * '00'
+    command = '2A{:02X}'.format(mask) + 6 * '00'
     send_command(command)
 
     return None
@@ -288,7 +308,7 @@ def abort_ref_search(motno):
 # Additional Inputs/Outputs
 # =============================================================================
 
-def read_input_channels(channelno, resp_addr):
+def read_input_channels(channelno):
 
     request = '300{0}{1}'.format(channelno, resp_addr) + 5 * '00'
     reply = send_request(request)

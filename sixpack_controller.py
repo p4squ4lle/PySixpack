@@ -19,7 +19,7 @@ class SIXpack2():
         self._ser.timeout = timeout
 
         self._sixpack_addr = sixpack_addr
-        self._resp_addr = resp_addr
+        self._resp_addr = resp_addr     #muss im als string im hex format angegeben werden ('00')
         self.num_motors = num_motors
 
         self._last_command = ''
@@ -40,7 +40,8 @@ class SIXpack2():
         command = self._sixpack_addr + command
 
         command_bytes = bytes.fromhex(command)
-
+        
+        self._ser.reset_output_buffer()
         self._ser.write(command_bytes)
 
         self._last_command = command
@@ -57,10 +58,12 @@ class SIXpack2():
         request = self._sixpack_addr + request
         request_bytes = bytes.fromhex(request)
 
+        self._ser.reset_output_buffer()
         self._ser.write(request_bytes)
         self._last_request = request
-
-        reply_bytes = self._ser.read(9)          # bugging list
+        
+        self._ser.reset_input_buffer()
+        reply_bytes = self._ser.read(9)
         reply_hex = reply_bytes.hex()
 
         reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
@@ -89,13 +92,13 @@ class SIXpack2():
 
         max_value = 1 << (8*num_bytes)
 
-        # do this better!
+        param = int(param)
         if param < 0 and 2 * abs(param) < max_value:
             param += max_value
         elif param > max_value:
             raise ValueError('parameter out of range')
 
-        param_hex = '{:x}'.format(param)
+        param_hex = '{:X}'.format(param)
 
         checksum = 2 * num_bytes - len(param_hex)
         if checksum != 0:
@@ -128,7 +131,7 @@ class SIXpack2():
         and serail number
         """
 
-        request = '43{0:x}'.format(self._resp_addr) + 6*'00'
+        request = '43{0}'.format(self._resp_addr) + 6*'00'
         reply = self.send_request(request)
 
         firmware = reply['p0']
@@ -137,8 +140,13 @@ class SIXpack2():
         reset_flag = reply['p1']
 
         pack_temp = self.decode_param([reply['p2']])
-
-        serial_n = self.decode_param([reply['p3'], reply['p4']], signed=False)
+        
+        serial_n = list(reply.values())[5:9]
+        serial_n = self.decode_param(serial_n, signed=False)
+        
+        #serial_n = self.decode_param([reply['p3'], reply['p4']
+        #                               reply['p5'], reply['p6']],
+        #                               signed=False)
 
         return firmware, reset_flag, pack_temp, serial_n
 
@@ -148,7 +156,7 @@ class SIXpack2():
         (motno: 0...num_motors)
         """
 
-        request = '200{0}{1:x}'.format(motno, self._resp_addr) + 5 * '00'
+        request = '200{0}{1}'.format(motno, self._resp_addr) + 5 * '00'
         reply = self.send_request(request)
 
         motno = reply['p0']
@@ -169,12 +177,12 @@ class SIXpack2():
         (motno: 0...num_motors)
         """
 
-        request = '210{0}{1:x}'.format(motno, self._resp_addr) + 5 * '00'
+        request = '210{0}{1}'.format(motno, self._resp_addr) + 5 * '00'
         reply = self.send_request(request)
 
         motno = reply['p0']
 
-        velact = self.decode_param([reply['p1'], reply['p2']], signed=False)
+        velact = self.decode_param([reply['p1'], reply['p2']], signed=True)
         # im windows programm nachschauen ob es auch
         # negative geschwindigkeiten gibt
 
@@ -262,7 +270,7 @@ class SIXpack2():
 
     def stop_motors(self, mask):
 
-        command = '2A{}'.format(mask) + 6 * '00'
+        command = '2A{0}'.format(mask) + 6 * '00'    # mask muss richtig parametrisiert werden
         self.send_command(command)
 
         return None
@@ -288,7 +296,7 @@ class SIXpack2():
                              (value given: {})
                              '''.format(int(value)))
 
-        command = '100{0}{1:x}'.format(motno, value) + 5 * '00'
+        command = '100{0}{1:02X}'.format(motno, value) + 5 * '00'   #das hier evtl anders lösen (vlt. value umwandeln mit encode_param)
         self.send_command(command)
 
         return None
@@ -404,11 +412,9 @@ class SIXpack2():
     # Additional Inputs/Outputs
     # =============================================================================
 
-    def read_input_channels(self, channelno, resp_addr):
+    def read_input_channels(self, channelno):
 
-        resp_addr = self._resp_addr
-
-        request = '300{0}{1}'.format(channelno, resp_addr) + 5 * '00'
+        request = '300{0}{1}'.format(channelno, self._resp_addr) + 5 * '00'
         reply = self.send_request(request)
 
         channelno = reply['p0']
