@@ -19,7 +19,7 @@ class SIXpack2():
         self._ser.timeout = timeout
 
         self._sixpack_addr = sixpack_addr
-        self._resp_addr = resp_addr     #muss im als string im hex format angegeben werden ('00')
+        self._resp_addr = resp_addr     # muss als string im hex format angegeben werden ('00')
         self.num_motors = num_motors
 
         self._last_command = ''
@@ -27,6 +27,10 @@ class SIXpack2():
 
         self.status_dict = {'motor{}'.format(i+1): None
                             for i in range(self.num_motors)}
+
+        self.action_dict = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
+                            15: 'rotation', (20, 29): 'reference switch search',
+                            30: 'mechanical reference'}
 
     # =====================================================================
     # Send command and request reply
@@ -40,7 +44,7 @@ class SIXpack2():
         command = self._sixpack_addr + command
 
         command_bytes = bytes.fromhex(command)
-        
+
         self._ser.reset_output_buffer()
         self._ser.write(command_bytes)
 
@@ -61,7 +65,7 @@ class SIXpack2():
         self._ser.reset_output_buffer()
         self._ser.write(request_bytes)
         self._last_request = request
-        
+
         self._ser.reset_input_buffer()
         reply_bytes = self._ser.read(9)
         reply_hex = reply_bytes.hex()
@@ -140,10 +144,10 @@ class SIXpack2():
         reset_flag = reply['p1']
 
         pack_temp = self.decode_param([reply['p2']])
-        
+
         serial_n = list(reply.values())[5:9]
         serial_n = self.decode_param(serial_n, signed=False)
-        
+
         #serial_n = self.decode_param([reply['p3'], reply['p4']
         #                               reply['p5'], reply['p6']],
         #                               signed=False)
