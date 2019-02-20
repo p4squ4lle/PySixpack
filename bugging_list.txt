@@ -1,8 +1,20 @@
-- serial.flush(): ich hab jetzt erstmal ser.reset_output_buffer() und ser.reset_input_buffer() in
-  send_cmd/request reingeschrieben; (vgl. ser.flush() in smaract communication.py);
-  müsste man evtl nochmal testen ob dadurch probleme aufkommen beim senden oder empfangen von queries
+- send_request(): einen richtigen fehler raisen falls reply_cmd != request_cmd OR reply_addr != request_addr
+                  (OR len(reply_hex) == 0); vlt. kann man reply_addr aber auch gar nicht abspeichern,
+                  is eigentlich nich wichtig...
 
-- das mit dem last_command/request funktioniert nicht (wird nicht zurückgegeben)
+- auprobieren ob das programm auch mit python 2.7 läuft
+
+- gibt es einen query befehl der die anzahl der Motoren ausgibt? vlt. query_all_motor_activities()?
+  wäre hilfreich für create_motors()
+
+- query_all_motor_activities braucht eventuell länger wenn delayed response gefordert wird
+
+- welchen action wert gibt der controller für reference search zurück: 20-29? oder nur 20 & 29?
+
+- in Sixpack2Motor class das mit der resp_addr anders lösen: entweder in constants oder beim initialisieren
+  als parameter von SIXpack2Controller mitgeben
+
+- das mit dem last_command/request funktioniert nicht (wird nicht zurückgegeben), oder doch aber nur mit einer Klasse?
 
 - action_dict implementieren (für befehl get_pos() und get_vel())
 
@@ -20,17 +32,12 @@
 - resp_addr: entweder als string lassen und dann ohne umwandlung (z.b. bei get_unit_info()) oder
   als Zahl und dann mit Umwandlung (encode_param())
 
-- um serial port zu öffnen muss spyder mit admin rechten (sudo) gestartet werden
 
-- nachsehen wie die DIP-Switches eingestellt sind
+
+- nachsehen wie die DIP-Switches eingestellt sind (an der hardware)
 
 - im windows programm nachsehen: ref_search_params(): wie werden die debounce times übermittelt?
                                  befehle von 7.3 additional inputs / outputs
-
-
-- sixback_controller.py: send_request:
-    - funktioniert self.ser.read(9) oder kann man das auch mit 'while self.ser.in_waiting(): [..]' lösen?
-      vlt gehts auch mit self.ser.readline()
 
 - set_add_outputs(): kann man über die argumente der funktion iterieren (irgendwie so: format(*args))
 
@@ -44,16 +51,18 @@
   - ich denke es wäre nicht schlecht im constants modul auch funktionen zu haben die Antwortbytes
     in aussagekräftige meldungen umcodieren
 
+- ser.read() liest ein (1) byte ausm puffer
 
-- ser.read() liest ein byte ausm puffer
+- serial.flush(): ich hab jetzt erstmal ser.reset_output_buffer() und ser.reset_input_buffer() in
+  send_cmd/request reingeschrieben; (vgl. ser.flush() in smaract communication.py);
+  müsste man evtl nochmal testen ob dadurch probleme aufkommen beim senden oder empfangen von queries
+
+- um serial port zu öffnen muss spyder mit admin rechten (sudo) gestartet werden
+
 
 
 smaract:
 
   - communication.py file:
     - @comm_error_handler; how can i implement this?
-    - socketCom; ist das für windows?
     - class SerialCom erbt von Serial und kann daher einfach deren Funktionen übernehmen (write, reakline, ...)
-
-  - axis.py:
-    - what is weakref? 'import weakref'

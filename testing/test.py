@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 ser = Serial(port='/dev/ttyUSB2',
              baudrate=19200)
-
+2
 x = ser.isOpen()
 if x is True:
     print('USB port is open')
