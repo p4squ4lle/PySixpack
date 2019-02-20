@@ -28,25 +28,12 @@
                    die seriennr auf dem gerät oder in der anleitung nachsehen um zu überprüfen ob
                    man nur die 2 reply bytes (p3 p4)  oder alle vier letzten hernhemen muss (p3 - p6)
 
-
-- resp_addr: entweder als string lassen und dann ohne umwandlung (z.b. bei get_unit_info()) oder
-  als Zahl und dann mit Umwandlung (encode_param())
-
-
-
 - nachsehen wie die DIP-Switches eingestellt sind (an der hardware)
-
-- im windows programm nachsehen: ref_search_params(): wie werden die debounce times übermittelt?
-                                 befehle von 7.3 additional inputs / outputs
 
 - set_add_outputs(): kann man über die argumente der funktion iterieren (irgendwie so: format(*args))
 
-- bei der initialisierung der seriellen schnittstelle kann man auch ein dictonary für die parameter benutzen:
-  apply_settings(dict)
-
-<<<<<<< HEAD
 - Serial exceptions mit einbauen?
-=======
+
 - fct. ref_search_params(): die Bedingung, dass alle motoren stehen sollten, bevor die parameter geändert werden,
                             sollte im code implementiert werden
 
@@ -54,16 +41,11 @@
   - ich denke es wäre nicht schlecht im constants modul auch funktionen zu haben die Antwortbytes
     in aussagekräftige meldungen umcodieren
 
-- ser.read() liest ein (1) byte ausm puffer
-
 - serial.flush(): ich hab jetzt erstmal ser.reset_output_buffer() und ser.reset_input_buffer() in
   send_cmd/request reingeschrieben; (vgl. ser.flush() in smaract communication.py);
   müsste man evtl nochmal testen ob dadurch probleme aufkommen beim senden oder empfangen von queries
 
 - um serial port zu öffnen muss spyder mit admin rechten (sudo) gestartet werden
-
-
->>>>>>> 1fee189922980a2b9e3f92d5d0e6b52cbed98676
 
 smaract:
 
