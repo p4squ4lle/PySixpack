@@ -1,0 +1,6 @@
+adjust baudrate ($40):
+  der parameter transmitter_delay gibt die hälfte des eigentlichen delays in ms an:
+
+  transmitter_delay = 0.5 * actual_delay [ms]
+
+das gleiche gilt für das timeout for abort of packet ($41)

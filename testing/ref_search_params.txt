@@ -1,0 +1,20 @@
+p3 und p4 ('p3 p4') für debounce time in ref_search_params():
+  0ms       '01 00'
+  2ms       '03 00'
+  4ms       '07 00'
+  6ms       '0f 00'
+  8ms       '1f 00'
+  10ms      '3f 00'
+  12ms      '7f 00'
+  14ms      'ff 00'
+  16ms      'ff 01'
+  [...]
+  30ms      'ff ff'
+
+# generate values out of given ms (without 0)
+a = []
+for i in range(2, 32, 2):
+    j = int(i/2)
+    x = (2**i >> (j-1)) - 1
+    a.append(x)
+    
