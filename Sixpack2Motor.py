@@ -34,7 +34,9 @@ class Sixpack2Motor(object):
         elif 20 <= act <= 29:
             action = 'reference switch search'
         else:
-            raise ValueError('reply action seems to be incorrect')
+            raise ValueError('reply action ({0}) seems to be incorrect'
+                             .format(act),
+                             'and was not found in ACTION_DICT')
 
         self._ctrl.status_dict['motor{}'.format(self._motno)] = action
 
@@ -61,7 +63,9 @@ class Sixpack2Motor(object):
         elif 20 <= act <= 29:
             action = 'reference switch search'
         else:
-            raise ValueError('reply action seems to be incorrect')
+            raise ValueError('reply action ({0}) seems to be incorrect'
+                             .format(act),
+                             'and was not found in ACTION_DICT')
 
         self._ctrl.status_dict['motor{}'.format(motno)] = action
 
@@ -143,13 +147,9 @@ class Sixpack2Motor(object):
 
     def set_peak_current(self, motno, value):
 
-        if not 0 <= value <= 255:
-            raise ValueError('''Value has to be between 0 and 255
-                             (value given: {})
-                             '''.format(int(value)))
+        value = c.encode_param(value, num_bytes=1)
 
-        command = '100{0}{1:02X}'.format(motno, value) + 5 * '00'
-        # das hier evtl anders lösen (vlt. value umwandeln mit encode_param)
+        command = '100{0}{1}'.format(self._motno, value) + 5 * '00'
         self.send_command(command)
 
         return None
@@ -200,6 +200,18 @@ class Sixpack2Motor(object):
         change parameters for fast reference search
         (change only with motors standing still)
         """
+
+        wait = True
+        counter = 0
+        while wait:
+            self._ctrl.query_all_motor_activities()
+            checksum = sum(i for i in self._ctrl.status_dict.values())
+            if checksum == 0:
+                wait = False
+            else:
+                counter += 1
+                print('waiting for all motors to become inactive'
+                      + counter * '.')
 
         vrefmax = c.encode_param(vrefmax, num_bytes=2)
         # 511 >= vmax >= vrefmax >= vstart

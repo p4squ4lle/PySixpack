@@ -41,6 +41,10 @@ class SIXpack2Controller(list):
         self.status_dict = {'motor{}'.format(i): 'N.a.'
                             for i in range(self.num_motors)}
 
+        self.reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
+                                                'p1', 'p2', 'p3',
+                                                'p4', 'p5', 'p6'])
+
     # ========================================================================
     # Initialize Sixpack Motors
     # ========================================================================
@@ -71,8 +75,8 @@ class SIXpack2Controller(list):
     def send_request(self, request):
         """
         Encodes and sends request to the PACK.
-        Receive reply bytes, transcode them into integer numbers
-        and write them into reply_dict dictonary
+        Receives reply bytes, transcodes them into integer numbers
+        and writes them into reply_dict dictonary.
         """
 
         request = self._sixpack_addr + request
@@ -86,19 +90,22 @@ class SIXpack2Controller(list):
         reply_bytes = self._ser.read(9)
         reply_hex = reply_bytes.hex()
 
-        reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
-                                           'p1', 'p2', 'p3',
-                                           'p4', 'p5', 'p6'])
+        if reply_hex[0:2] != self._sixpack_addr:
+            raise UserWarning('sixpack address in reply {} does not match'
+                              .format(reply_hex[0:2]),
+                              'initialized sixpack address{}'
+                              .format(self._sixpack_addr))
 
         if reply_hex[2:4] != request[2:4]:
-            print('Error: Response command nr ({0}) does not match requested'
-                  'command nr ({1})'.format(reply_dict['cmd'], request[2:4]))
+            raise UserWarning('Warning: Response command nr ({0}) does not'
+                              'match requested command nr ({1})'
+                              .format(reply_hex[2:4], request[2:4]))
 
-        for i, k in enumerate(reply_dict):
-            reply_dict[k] = int(reply_hex[2*i:2*i+2], 16)
-        reply_dict['cmd'] = reply_hex[2:4]
+        for i, k in enumerate(self.reply_dict):
+            self.reply_dict[k] = int(reply_hex[2*i:2*i+2], 16)
+        self.reply_dict['cmd'] = reply_hex[2:4]
 
-        return reply_dict
+        return self.reply_dict
 
     # ========================================================================
     # Get Unit Information
@@ -132,7 +139,7 @@ class SIXpack2Controller(list):
     # Moving the motors
     # ========================================================================
 
-    def query_all_motor_activities(self, mask=0):
+    def query_all_motor_activities(self, mask='00'):
         """
         Queries current activity of all motors. The mask specifies the motors
         for which a delayed response is wanted, i.e. the PACK will not send the
@@ -148,7 +155,15 @@ class SIXpack2Controller(list):
 
         for i in range(self.num_motors):
             act = reply['p{}'.format(i)]
-            self.status_dict['motor{}'.format(i)] = c.ACTION_DICT[act]
+            if act in c.ACTION_DICT:
+                self.status_dict['motor{}'.format(i)] = c.ACTION_DICT[act]
+            elif 20 <= act <= 29:
+                    self.status_dict['motor{}'.format(i)] = 'reference switch'
+                    'search'
+            else:
+                raise ValueError('reply action ({0}) for motor {1} seems to be'
+                                 .format(act, i),
+                                 'incorrect and was not found in ACTION_DICT')
 
         return reply
 
@@ -166,16 +181,18 @@ class SIXpack2Controller(list):
 
         return None
 
-    def stop_motors(self, mask):
+    def stop_motors(self, mask='000000'):
         """
         Stop multiple motors at the same time. This command sets the target
         position of each concerned motor equal to its actual position. However
-        motors driving beyond vstart will overshoot and return driving another
-        ramp back to the point their new target position was set using this
-        command.
+        motors driving with velocity beyond vstart will overshoot and return
+        driving another ramp back to the point their new target position
+        was set using this command.
         (mask for deceleration: bit 0 = motor 0, ..., bit 5 = motor 5;
          0: motor masked, 1: set target position to actual position)
         """
+
+        mask = c.encode_mask(mask)
 
         command = '2A{0}'.format(mask) + 6 * '00'
         # mask muss richtig parametrisiert werden

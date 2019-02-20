@@ -86,17 +86,12 @@ def check_paramrange(parameter_number, value, prefix):
 
 
 def encode_param(param, num_bytes=4):
-    # check whether each given param results in 4/8 (!) digit hex string
-
-    parameter = ''
 
     max_value = 1 << (8*num_bytes)
 
-    # do this better!
-    if param < 0 and 2 * abs(param) < max_value:
+    param = int(param)
+    if param < 0:
         param += max_value
-    elif param > max_value:
-        raise ValueError('parameter out of range')
 
     param_hex = '{:x}'.format(param)
 
@@ -104,6 +99,7 @@ def encode_param(param, num_bytes=4):
     if checksum != 0:
         param_hex = checksum * '0' + param_hex
 
+    parameter = ''
     for i in reversed(range(num_bytes)):
         parameter += param_hex[2*i:2*i+2]
 
@@ -120,3 +116,14 @@ def decode_param(param, signed=True):
         value -= max_value
 
     return value
+
+
+def encode_mask(mask):
+    # if len(mask) > 8:
+        # raise Inputerror
+    try:
+        mask = int(mask, 2)
+        return '{:02x}'.format(mask)
+    except TypeError as error:
+        print('the given mask has to be of type string ({})'
+              .format(repr(error)))
