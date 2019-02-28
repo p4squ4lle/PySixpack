@@ -10,8 +10,6 @@
 
 - das mit dem last_command/request funktioniert nicht (wird nicht zurückgegeben), oder doch aber nur mit einer Klasse?
 
-- _motor.control_current()
-
 - maybe remove all ValueErrors and define own exception? (InputError)
 
 - get_unit_info(): die seriennr auf dem gerät oder in der anleitung nachsehen um zu überprüfen ob
