@@ -3,14 +3,18 @@
 - status dict sollte motor0 - motor5 haben nicht motor1 bis motor6, nachsehen ob bei den fkt
 die das status dict beschreiben richtig parametriesiert wurde!
 
+- für nächsten dummy motor test:
+    - mit num_motors=2 initialisieren und versuchen den 2. motor zu
+      bewegen/anzusprechen, um zu sehen welcher fehler aufkommt bzw. was als antwort vom controller zurückkommt
+
 - bei __del__() wirklich die ctrl variable freigeben
 
-- constants modul nicht als c importieren sondern mit * 
+- constants modul nicht als c importieren sondern mit *
 
 - query_all : rotation mit velocity angeben; evlt im status_dict auch velocity und pos angeben.
 
 - read_input_channels scheint mit beliebiger channelno eine antwort zu liefern, aber ab channelno=8
- immer das gleiche ergebnis: ('channelno', 64, 0, 192, 0)
+ immer das gleiche ergebnis: ('channelno', 64, 0, 192, 0) -> channelno beschränken
 
 - self.send_command und send_request verschleiern -> _send_command
 mglw. auch noch andere variablen verschleiern: last_request usw.
@@ -19,15 +23,8 @@ mglw. auch noch andere variablen verschleiern: last_request usw.
 
 - in motor.py alle motnos durch self._motno ersetzen!
 
-- gibt es einen query befehl der die anzahl der Motoren ausgibt? vlt. query_all_motor_activities()?
-  query all motors gibt inactive für jeden motor zurück obwohl nur ein motor angeschl. ist.
-
 - query_all_motor_activities braucht eventuell länger wenn delayed response gefordert wird -
   vielleicht passt das schon mit timeout=None? wartet er da unendlich lang auf Antwort?
-
-- welchen action wert gibt der controller für reference search zurück: 20-29? oder nur 20 & 29?
-
-- das mit dem last_command/request funktioniert nicht (wird nicht zurückgegeben), oder doch aber nur mit einer Klasse?
 
 - maybe remove all ValueErrors and define own exception? (InputError)
 
@@ -46,15 +43,3 @@ mglw. auch noch andere variablen verschleiern: last_request usw.
   - ich denke es wäre nicht schlecht im constants modul auch funktionen zu haben die Antwortbytes
     in aussagekräftige meldungen umcodieren
   - in encode_param: check_paramrange implementieren
-
-- serial.flush(): ich hab jetzt erstmal ser.reset_output_buffer() und ser.reset_input_buffer() in
-  send_cmd/request reingeschrieben; (vgl. ser.flush() in smaract communication.py);
-  müsste man evtl nochmal testen ob dadurch probleme aufkommen beim senden oder empfangen von queries
-
-- um serial port zu öffnen muss spyder mit admin rechten (sudo) gestartet werden
-
-smaract:
-
-  - communication.py file:
-    - @comm_error_handler; how can i implement this?
-    - class SerialCom erbt von Serial und kann daher einfach deren Funktionen übernehmen (write, reakline, ...)
