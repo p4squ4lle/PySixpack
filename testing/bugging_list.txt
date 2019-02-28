@@ -1,0 +1,45 @@
+- auprobieren ob das programm auch mit python 2.7 läuft
+
+- status dict sollte motor0 - motor5 haben nicht motor1 bis motor6, nachsehen ob bei den fkt
+die das status dict beschreiben richtig parametriesiert wurde!
+
+- für nächsten dummy motor test:
+    - mit num_motors=2 initialisieren und versuchen den 2. motor zu
+      bewegen/anzusprechen, um zu sehen welcher fehler aufkommt bzw. was als antwort vom controller zurückkommt
+
+- bei __del__() wirklich die ctrl variable freigeben
+
+- constants modul nicht als c importieren sondern mit *
+
+- query_all : rotation mit velocity angeben; evlt im status_dict auch velocity und pos angeben.
+
+- read_input_channels scheint mit beliebiger channelno eine antwort zu liefern, aber ab channelno=8
+ immer das gleiche ergebnis: ('channelno', 64, 0, 192, 0) -> channelno beschränken
+
+- self.send_command und send_request verschleiern -> _send_command
+mglw. auch noch andere variablen verschleiern: last_request usw.
+
+- check param range nich so umständlich machen!!
+
+- in motor.py alle motnos durch self._motno ersetzen!
+
+- query_all_motor_activities braucht eventuell länger wenn delayed response gefordert wird -
+  vielleicht passt das schon mit timeout=None? wartet er da unendlich lang auf Antwort?
+
+- maybe remove all ValueErrors and define own exception? (InputError)
+
+- get_unit_info(): die seriennr auf dem gerät oder in der anleitung nachsehen um zu überprüfen ob
+                   man nur die 2 reply bytes (p3 p4) oder alle vier letzten hernehmen muss (p3 - p6)
+
+- nachsehen wie die DIP-Switches eingestellt sind (an der hardware)
+
+- set_add_outputs(): kann man über die argumente der funktion iterieren (irgendwie so: format(*args))
+
+- Serial exceptions mit einbauen?
+
+- fct. ref_search_params(): wie lange dauert die auswertung eines befehls (hier: query_all_motor_activities())
+
+- constants.py:
+  - ich denke es wäre nicht schlecht im constants modul auch funktionen zu haben die Antwortbytes
+    in aussagekräftige meldungen umcodieren
+  - in encode_param: check_paramrange implementieren

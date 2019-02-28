@@ -10,8 +10,9 @@
 from serial import Serial
 from collections import OrderedDict
 
-ser = Serial(port='/dev/ttyUSB2',
-             baudrate=19200)
+ser = Serial(port='/dev/ttyUSB3',
+             baudrate=19200,
+             timeout=5)
 
 x = ser.isOpen()
 if x is True:
@@ -27,7 +28,7 @@ num_motors = 4
 last_command = ''
 last_request = ''
 
-status_dict = {'motor{}'.format(i+1): None
+status_dict = {'motor{}'.format(i): None
                for i in range(num_motors)}
 
 action_dict = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
@@ -46,8 +47,27 @@ def send_command(command):
 
     command_bytes = bytes.fromhex(command)
 
+
+    x = ser.out_waiting()
+    print('bytes waiting in output buffer before writing anything: {}'.format(x))
+    y = ser.in_waiting()
+    print('bytes waiting in input buffer before writing anything: {}'.format(y))
+
+    print('----------------------------------')
+    print('Now really sending the command...')
+
+    ser.write(command_bytes)
+
+    print('----------------------------------')
+    x = ser.out_waiting()
+    print('bytes waiting in output buffer after writing cmd: {}'.format(x))
+    y = ser.in_waiting()
+    print('bytes waiting in input buffer after writing cmd: {}'.format(y))
+
+
     ser.reset_output_buffer()
     ser.write(command_bytes)
+
 
     last_command = command
 
@@ -67,7 +87,9 @@ def send_request(request):
     request = sixpack_addr + request
     request_bytes = bytes.fromhex(request)
 
+
     y = ser.inWaiting()
+
     print('# of bytes waiting in input buffer before writing anything: {}'.format(y))
 
     print('Now really sending the request...')
@@ -80,18 +102,17 @@ def send_request(request):
     y = ser.inWaiting()
     print('# of bytes waiting in input buffer after writing request: {}'.format(y))
 
-    ser.reset_input_buffer()
-    reply_bytes = ser.read(9)
+    reply_bytes = ser.read(9)          # bugging list
     reply_hex = reply_bytes.hex()
-
     print('----------------------------------')
     y = ser.inWaiting()
+
     print('# of bytes waiting in input buffer after reading reply: {}'.format(y))
 
     reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
                                        'p1', 'p2', 'p3',
                                        'p4', 'p5', 'p6'])
-
+    
     for i, k in enumerate(reply_dict):
         reply_dict[k] = int(reply_hex[2*i:2*i+2], 16)
 
@@ -163,7 +184,9 @@ def get_unit_info():
     print('Getting unit info...')
     print('----------------------------------')
 
+
     request = '43{0}'.format(resp_addr) + 6*'00'
+
     reply = send_request(request)
 
     firmware = reply['p0']
@@ -313,3 +336,32 @@ def read_input_channels(channelno):
     logic_state_TTLIO1 = reply['p5']
 
     return reply, channelno, analogue_value, ref_input, all_ref_inputs, logic_state_TTLIO1
+
+
+def query_all_motor_activities(mask='00'):
+        """
+        Queries current activity of all motors. The mask specifies the motors
+        for which a delayed response is wanted, i.e. the PACK will not send the
+        response before all concerned motors are inactive.
+        (mask for delayed response: bit 0 = motor 0, ..., bit 5 = motor 5;
+         0: motor masked, 1: delayed respond; default: all motors masked)
+
+        The response is written in the status_dict dictonary.
+        """
+
+        request = '28{0}{1}'.format(resp_addr, mask) + 5 * '00'
+        reply = send_request(request)
+
+        for i in range(num_motors):
+            act = reply['p{}'.format(i)]
+            if act in action_dict:
+                status_dict['motor{}'.format(i)] = action_dict[act]
+            elif 20 <= act <= 29:
+                    status_dict['motor{}'.format(i)] = 'reference switch'
+                    'search'
+            else:
+                raise UserWarning('reply action ({0}) for motor {1} seems to'
+                                  .format(act, i), 'be incorrect and was not'
+                                  'found in ACTION_DICT')
+
+        return reply
