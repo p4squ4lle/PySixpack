@@ -150,6 +150,8 @@ class SIXpack2Controller(list):
         The response is written in the status_dict dictonary.
         """
 
+        mask = c.encode_mask(mask)
+
         request = '28{0}{1}'.format(self._resp_addr, mask) + 5 * '00'
         reply = self.send_request(request)
 
@@ -161,9 +163,9 @@ class SIXpack2Controller(list):
                     self.status_dict['motor{}'.format(i)] = 'reference switch'
                     'search'
             else:
-                raise ValueError('reply action ({0}) for motor {1} seems to be'
-                                 .format(act, i),
-                                 'incorrect and was not found in ACTION_DICT')
+                raise UserWarning('reply action ({0}) for motor {1} seems to'
+                                  .format(act, i), 'be incorrect and was not'
+                                  'found in ACTION_DICT')
 
         return reply
 
@@ -175,6 +177,8 @@ class SIXpack2Controller(list):
         (mask for parallel ramp: bit 0 = motor 0, ..., bit 5 = motor 5;
          0: motor masked, 1: start motor)
         """
+
+        mask = c.encode_mask(mask)
 
         command = '29{}'.format(mask) + 6 * '00'
         self.send_command(command)
@@ -195,7 +199,6 @@ class SIXpack2Controller(list):
         mask = c.encode_mask(mask)
 
         command = '2A{0}'.format(mask) + 6 * '00'
-        # mask muss richtig parametrisiert werden
         self.send_command(command)
 
         return None
@@ -282,6 +285,9 @@ class SIXpack2Controller(list):
 
     def set_ready_output_func(self, motormask, refsearchmask):
 
+        motormask = c.encode_mask(motormask)
+        refsearchmask = c.encode_mask(refsearchmask)
+
         cmd = '33{0}{1}'.format(motormask, refsearchmask) + 5 * '00'
         self.send_command(cmd)
 
@@ -331,6 +337,8 @@ class SIXpack2Controller(list):
     # =============================================================================
 
     def start_multi_movement(self, motormask):
+
+        motormask = c.encode_mask(motormask)
 
         cmd = '50{0}'.format(motormask) + 6 * '00'
         self.send_command(cmd)

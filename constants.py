@@ -64,25 +64,24 @@ GLOBAL_PARAMETER = {}
 # =============================================================================
 
 
-def check_paramrange(parameter_number, value, prefix):
+def check_paramrange(parameter, value):
     """Check if value is valid for given parameter_number"""
-    pn = int(parameter_number)
+    p = str(parameter)
     v = int(value)
-    DICT = AXIS_PARAMETER if type(pn) == int else GLOBAL_PARAMETER
-    if pn not in DICT:
-        raise ValueError(prefix, "parameter number", pn, DICT)
-    name, ranges, _ = DICT[parameter_number]
+    DICT = AXIS_PARAMETER if type(p) == str else GLOBAL_PARAMETER
+    if p not in DICT:
+        raise ValueError("parameter", p, DICT)
+    ranges = DICT[p]
     NOTINRANGE = False
     for (lo, hi) in ranges:
         if not (lo <= v < hi):
             NOTINRANGE = True
     if NOTINRANGE:
-        raise ValueError(prefix, "parameter", repr(name),
-                                 " + ".join(["range({}, {})".format(lo, hi)
-                                             for lo, hi in ranges])
+        raise ValueError("parameter", repr(p),
+                         " + ".join(["range({}, {})".format(lo, hi)
+                                     for lo, hi in ranges])
                          )
-
-    return pn, v
+    return p, v
 
 
 def encode_param(param, num_bytes=4):

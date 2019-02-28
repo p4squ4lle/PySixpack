@@ -154,14 +154,28 @@ class Sixpack2Motor(object):
 
         return None
 
-    def control_current(self, motno, T0, *I):
-        # check wether I can leave it as *I or get more specific
-        # maybe "I=(0, 0, 0, 0)" is better
-        # check command formatting
-        # for the conversion of I we need a dictonary in constants file
+    def control_current(self, T0, currentlist):
+
+        I_list = []
+
+        if not type(currentlist) == list:
+            raise TypeError('given current list is not a list')
+        if len(currentlist) != 4:
+            raise ValueError('current list has to be of length 4.',
+                             'Current list given: {}'.format(currentlist))
+
+        for i in currentlist:
+            try:
+                I_list.append(c.I_DICT[i])
+            except KeyError as e:
+                print('given percentage of current ({}%) is not in allowed',
+                      'values'.format(i),
+                      '(allowed values: {}; given current list: {})'
+                      .format(c.I_DICT.keys(), currentlist),
+                      '(error msg: {})'.format(e))
 
         T0 = c.encode_param(T0, num_bytes=2)
-        command = '110%s0%s0%s0%s0%s0%s%s' % (motno, *I, T0)
+        command = '110{0}0{1}0{2}0{3}0{4}{5}' % (self._motno, *I_list, T0)
         self.send_command(command)
 
         return None

@@ -3,17 +3,16 @@
 - gibt es einen query befehl der die anzahl der Motoren ausgibt? vlt. query_all_motor_activities()?
   wäre hilfreich für create_motors()
 
-- query_all_motor_activities braucht eventuell länger wenn delayed response gefordert wird
+- query_all_motor_activities braucht eventuell länger wenn delayed response gefordert wird -
+  vielleicht passt das schon mit timeout=None? wartet er da unendlich lang auf Antwort?
 
 - welchen action wert gibt der controller für reference search zurück: 20-29? oder nur 20 & 29?
 
 - das mit dem last_command/request funktioniert nicht (wird nicht zurückgegeben), oder doch aber nur mit einer Klasse?
 
-- motormask in constants modul auslagern: encode_mask()
-
 - _motor.control_current()
 
-- remove all ValueErrors!
+- maybe remove all ValueErrors and define own exception? (InputError)
 
 - get_unit_info(): die seriennr auf dem gerät oder in der anleitung nachsehen um zu überprüfen ob
                    man nur die 2 reply bytes (p3 p4) oder alle vier letzten hernehmen muss (p3 - p6)
