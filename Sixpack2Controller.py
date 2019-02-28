@@ -240,7 +240,7 @@ class SIXpack2Controller(list):
     # =============================================================================
 
     def read_input_channels(self, channelno):
-        
+
         channelno = c.encode_param(channelno, num_bytes=1)
 
         request = '30{0}{1}'.format(channelno, self._resp_addr) + 5 * '00'

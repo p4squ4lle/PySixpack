@@ -3,13 +3,6 @@
 
 class basecontroller(list):
 
-<<<<<<< HEAD
-    def __init__(self, comm, joystick):
-        list.__init__(self)
-        self.comm = comm
-        self.joystick = joystick
-
-=======
     def __init__(self, comm):
         list.__init__(self)
         self.comm = comm
@@ -19,7 +12,6 @@ class basecontroller(list):
 
         self.joystick = cmd
         self.append(cmd)
->>>>>>> testing
 
 
 class controller(basecontroller):
@@ -30,10 +22,6 @@ class controller(basecontroller):
         self.create_axes()
 
 
-<<<<<<< HEAD
-x = controller(1, (2, 3))
-print(x, type(x), repr(x), str(x))
-=======
 # x = controller(1, (2, 3))
 # print(x, type(x), repr(x), str(x))
 
@@ -52,4 +40,3 @@ print('number of specified motors (={})'
       .format(1),
       '!= number of initialized motors (={})'
       .format(2))
->>>>>>> testing

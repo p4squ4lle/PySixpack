@@ -1,17 +1,7 @@
-<<<<<<< HEAD
-
-NUM_MOTORS = 4
-STATUS_DICT = {'motor{}'.format(i+1): None
-               for i in range(NUM_MOTORS)}
-
-=======
->>>>>>> testing
 ACTION_DICT = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
                15: 'rotation', (20, 29): 'reference switch search',
                30: 'mechanical reference'}
 
-<<<<<<< HEAD
-=======
 # =============================================================================
 # Current control
 # =============================================================================
@@ -68,7 +58,6 @@ AXIS_PARAMETER = {'peak_current': R_8u,
                   }
 
 GLOBAL_PARAMETER = {}
->>>>>>> testing
 
 # =============================================================================
 # Check parameter range, encode and decode parameter
