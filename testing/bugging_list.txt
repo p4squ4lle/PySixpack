@@ -1,7 +1,26 @@
 - auprobieren ob das programm auch mit python 2.7 läuft
 
+- status dict sollte motor0 - motor5 haben nicht motor1 bis motor6, nachsehen ob bei den fkt
+die das status dict beschreiben richtig parametriesiert wurde!
+
+- bei __del__() wirklich die ctrl variable freigeben
+
+- constants modul nicht als c importieren sondern mit * 
+
+- query_all : rotation mit velocity angeben; evlt im status_dict auch velocity und pos angeben.
+
+- read_input_channels scheint mit beliebiger channelno eine antwort zu liefern, aber ab channelno=8
+ immer das gleiche ergebnis: ('channelno', 64, 0, 192, 0)
+
+- self.send_command und send_request verschleiern -> _send_command
+mglw. auch noch andere variablen verschleiern: last_request usw.
+
+- check param range nich so umständlich machen!!
+
+- in motor.py alle motnos durch self._motno ersetzen!
+
 - gibt es einen query befehl der die anzahl der Motoren ausgibt? vlt. query_all_motor_activities()?
-  wäre hilfreich für create_motors()
+  query all motors gibt inactive für jeden motor zurück obwohl nur ein motor angeschl. ist.
 
 - query_all_motor_activities braucht eventuell länger wenn delayed response gefordert wird -
   vielleicht passt das schon mit timeout=None? wartet er da unendlich lang auf Antwort?

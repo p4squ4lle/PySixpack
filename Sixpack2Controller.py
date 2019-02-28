@@ -11,9 +11,9 @@ class SIXpack2Controller(list):
     # Initialize Sixpack Controller
     # =========================================================================
 
-    def __init__(self, port='/dev/ttyUSB4',
+    def __init__(self, port='/dev/ttyUSB3',
                  baudrate=19200, timeout=None,
-                 sixpack_addr='00', resp_addr='00', num_motors=4):
+                 sixpack_addr='00', resp_addr='00', num_motors=1):
 
         list.__init__(self)
 
@@ -139,7 +139,7 @@ class SIXpack2Controller(list):
     # Moving the motors
     # ========================================================================
 
-    def query_all_motor_activities(self, mask='00'):
+    def query_all(self, mask='00'):
         """
         Queries current activity of all motors. The mask specifies the motors
         for which a delayed response is wanted, i.e. the PACK will not send the
@@ -167,7 +167,7 @@ class SIXpack2Controller(list):
                                   .format(act, i), 'be incorrect and was not'
                                   'found in ACTION_DICT')
 
-        return reply
+        return self.status_dict
 
     def start_parallel_ramp(self, mask):
         """
@@ -240,8 +240,10 @@ class SIXpack2Controller(list):
     # =============================================================================
 
     def read_input_channels(self, channelno):
+        
+        channelno = c.encode_param(channelno, num_bytes=1)
 
-        request = '300{0}{1}'.format(channelno, self._resp_addr) + 5 * '00'
+        request = '30{0}{1}'.format(channelno, self._resp_addr) + 5 * '00'
         reply = self.send_request(request)
 
         channelno = reply['p0']
@@ -256,8 +258,8 @@ class SIXpack2Controller(list):
 
         logic_state_TTLIO1 = reply['p5']
 
-        return(reply, channelno, analogue_value,
-               ref_input, all_ref_inputs, logic_state_TTLIO1)
+        return (reply, channelno, analogue_value, ref_input,
+                all_ref_inputs, logic_state_TTLIO1)
 
     def set_limits_stop_func(self, channelno,
                              min_value_left=0,

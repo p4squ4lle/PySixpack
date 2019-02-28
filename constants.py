@@ -72,15 +72,14 @@ def check_paramrange(parameter, value):
     if p not in DICT:
         raise ValueError("parameter", p, DICT)
     ranges = DICT[p]
+    lo = ranges[0]
+    hi = ranges[1]
     NOTINRANGE = False
-    for (lo, hi) in ranges:
-        if not (lo <= v < hi):
+    if not (lo <= v < hi):
             NOTINRANGE = True
     if NOTINRANGE:
-        raise ValueError("parameter", repr(p),
-                         " + ".join(["range({}, {})".format(lo, hi)
-                                     for lo, hi in ranges])
-                         )
+        raise ValueError("parameter", repr(p), 'range({}, {})'.format(lo, hi))
+
     return p, v
 
 

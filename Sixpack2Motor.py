@@ -50,7 +50,7 @@ class Sixpack2Motor(object):
         (motno: 0...num_motors)
         """
 
-        request = '210{0}{1}'.format(self._motno, self._resp_addr) + 5 * '00'
+        request = '210{0}{1}'.format(self._motno, self._ctrl._resp_addr) + 5 * '00'
         reply = self._ctrl.send_request(request)
 
         motno = reply['p0']
