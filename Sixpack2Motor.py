@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 from weakref import ref
-import constants as c
+from constants import *
 
 
 class Sixpack2Motor(object):
 
-    def __init__(self, ctrl, motno=0):
+    def __init__(self, ctrl, motno):
         self._motno = motno
         r = ref(ctrl)
         self._ctrl = r()
@@ -20,17 +20,17 @@ class Sixpack2Motor(object):
         request = '200{0}{1}'.format(self._motno, self._ctrl._resp_addr)
         request += 5 * '00'
 
-        reply = self._ctrl.send_request(request)
+        reply = self._ctrl._send_request(request)
 
         if self._motno != reply['p0']:
             raise UserWarning('specified motornumber != response motornumber')
 
-        posact = c.decode_param([reply['p1'], reply['p2'],
-                                 reply['p3'], reply['p4']])
+        posact = _decode_param([reply['p1'], reply['p2'],
+                                reply['p3'], reply['p4']])
 
         act = reply['p5']
-        if act in c.ACTION_DICT:
-            action = c.ACTION_DICT[act]
+        if act in ACTION_DICT:
+            action = ACTION_DICT[act]
         elif 20 <= act <= 29:
             action = 'reference switch search'
         else:
@@ -52,15 +52,13 @@ class Sixpack2Motor(object):
 
         request = '210{0}{1}'.format(self._motno, self._ctrl._resp_addr)
         request += 5 * '00'
-        reply = self._ctrl.send_request(request)
+        reply = self._ctrl._send_request(request)
 
-        motno = reply['p0']
-
-        velact = c.decode_param([reply['p1'], reply['p2']], signed=True)
+        velact = _decode_param([reply['p1'], reply['p2']], signed=True)
 
         act = reply['p3']
-        if act in c.ACTION_DICT:
-            action = c.ACTION_DICT[act]
+        if act in ACTION_DICT:
+            action = ACTION_DICT[act]
         elif 20 <= act <= 29:
             action = 'reference switch search'
         else:
@@ -68,9 +66,9 @@ class Sixpack2Motor(object):
                              .format(act),
                              'and was not found in ACTION_DICT')
 
-        self._ctrl.status_dict['motor{}'.format(motno)] = action
+        self._ctrl.status_dict['motor{}'.format(self._motno)] = action
 
-        return motno, velact, action
+        return self._motno, velact, action
 
     # =============================================================================
     # Moving the motor
@@ -83,52 +81,52 @@ class Sixpack2Motor(object):
         """
 
         cmd = '220{}'.format(self._motno) + 6 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
     def start_ramp(self, targetpos):
 
-        targetpos = c.encode_param(targetpos)
+        targetpos = _encode_param(targetpos, 'targetpos', num_bytes=4)
 
         cmd = '230{0}{1}'.format(self._motno, targetpos) + 2 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
     def activate_PI_on_targetpos(self, targetpos):
 
-        targetpos = c.encode_param(targetpos)
+        targetpos = _encode_param(targetpos, 'targetpos', num_bytes=4)
 
         cmd = '240{0}{1}'.format(self._motno, targetpos) + 2 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
     def rotate(self, rotvel):
 
-        rotvel = c.encode_param(rotvel, num_bytes=2)
+        rotvel = _encode_param(rotvel, 'rotvel', num_bytes=2)
 
         cmd = '250{0}{1}'.format(self._motno, rotvel) + 4 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
     def set_targetpos(self, targetpos):
 
-        targetpos = c.encode_param(targetpos)
+        targetpos = _encode_param(targetpos, 'targetpos', num_bytes=4)
 
         cmd = '260{0}{1}'.format(self._motno, targetpos) + 2 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
     def set_actualpos(self, posact):
 
-        posact = c.encode_param(posact)
+        posact = _encode_param(posact, 'posact', num_bytes=4)
 
         cmd = '270{0}{1}'.format(self._motno, posact) + 2 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
@@ -138,24 +136,24 @@ class Sixpack2Motor(object):
         """
 
         cmd = '2B0{}'.format(self._motno) + 6 * '00'
-        self._ctrl.send_command(cmd)
+        self._ctrl._send_command(cmd)
 
         return None
 
-    # =============================================================================
+    # =========================================================================
     # Setting motor parameters
-    # =============================================================================
+    # =========================================================================
 
-    def set_peak_current(self, motno, value):
+    def set_peak_current(self, peak_current):
 
-        value = c.encode_param(value, num_bytes=1)
+        peak_current = _encode_param(peak_current, 'peak_current', num_bytes=1)
 
-        command = '100{0}{1}'.format(self._motno, value) + 5 * '00'
-        self.send_command(command)
+        command = '100{0}{1}'.format(self._motno, peak_current) + 5 * '00'
+        self._send_command(command)
 
         return None
 
-    def control_current(self, T0, currentlist):
+    def control_current(self, T0, currentlist=[0, 50, 75, 100]):
 
         I_list = []
 
@@ -167,50 +165,51 @@ class Sixpack2Motor(object):
 
         for i in currentlist:
             try:
-                I_list.append(c.I_DICT[i])
+                I_list.append(I_DICT[i])
             except KeyError as e:
                 print('given percentage of current ({}%) is not in allowed',
                       'values'.format(i),
                       '(allowed values: {}; given current list: {})'
-                      .format(c.I_DICT.keys(), currentlist),
+                      .format(I_DICT.keys(), currentlist),
                       '(error msg: {})'.format(e))
 
-        T0 = c.encode_param(T0, num_bytes=2)
+        T0 = _encode_param(T0, 'T0', num_bytes=2)
         command = '110{0}0{1}0{2}0{3}0{4}{5}' % (self._motno, *I_list, T0)
-        self.send_command(command)
+        self._send_command(command)
 
         return None
 
-    def set_startvel(self, motno, vmin, vstart, divi):
+    def set_startvel(self, vmin, vstart, divi):
 
-        vmin = c.encode_param(vmin, num_bytes=2)
-        vstart = c.encode_param(vstart, num_bytes=2)
+        vmin = _encode_param(vmin, 'vmin', num_bytes=2)
+        vstart = _encode_param(vstart, 'vstart', num_bytes=2)
+        divi = _encode_param(divi, 'divi', num_bytes=1)
 
-        command = '130{0}{1}{2}0{3}00'.format(motno, vmin, vstart, divi)
-        self.send_command(command)
-
-        return None
-
-    def set_velacc(self, motno, amax, vmax):
-
-        amax = c.encode_param(amax, num_bytes=2)
-        vmax = c.encode_param(amax, num_bytes=2)
-
-        command = '140{0}{1}{2}0000'.format(motno, amax, vmax)
-        self.send_command(command)
+        command = '130{0}{1}{2}{3}00'.format(self._motno, vmin, vstart, divi)
+        self._send_command(command)
 
         return None
 
-    def set_motparams(self, motno, poslimit, mottype, other):
+    def set_velacc(self, amax, vmax):
 
-        poslimit = c.encode_param(poslimit, num_bytes=4)
+        amax = _encode_param(amax, 'amax', num_bytes=2)
+        vmax = _encode_param(vmax, 'vmax', num_bytes=2)
 
-        cmd = '150{0}{1}{2}{3}'.format(motno, poslimit, mottype, other)
-        self.send_command(cmd)
+        command = '140{0}{1}{2}0000'.format(self._motno, amax, vmax)
+        self._send_command(command)
 
         return None
 
-    def ref_search_params(self, motno, vrefmax, debounce, stop_after=0):
+    def set_motparams(self, poslimit, mottype, other):
+
+        poslimit = _encode_param(poslimit, 'poslimit', num_bytes=4)
+
+        cmd = '150{0}{1}{2}{3}'.format(self._motno, poslimit, mottype, other)
+        self._send_command(cmd)
+
+        return None
+
+    def ref_search_params(self, vrefmax, debounce, stop_after=0):
         """
         change parameters for fast reference search
         (change only with motors standing still)
@@ -228,36 +227,36 @@ class Sixpack2Motor(object):
                 print('waiting for all motors to become inactive'
                       + counter * '.')
 
-        vrefmax = c.encode_param(vrefmax, num_bytes=2)
+        vrefmax = _encode_param(vrefmax, 'vrefmax', num_bytes=2)
         # 511 >= vmax >= vrefmax >= vstart
 
-        debounce = c.encode_param(debounce, num_bytes=2)
-        # muss noch ordentlich parametrisiert werden
+        debounce = _encode_debounce(debounce)
 
-        cmd = '160{0}{1}{2}0{3}'.format(motno, vrefmax, debounce, stop_after)
-        self.send_command(cmd)
-
-        return None
-
-    def set_nulloffset_nullrange(self, motno, nulloffset, nullrange):
-
-        nulloffset = c.encode_param(nulloffset, num_bytes=4)
-        nullrange = c.encode_param(nullrange, num_bytes=2)
-
-        cmd = '180{0}{1}{2}'.format(motno, nulloffset, nullrange)
-        self.send_command(cmd)
+        cmd = '160{0}{1}{2}0{3}'.format(self._motno, vrefmax,
+                                        debounce, stop_after)
+        self._send_command(cmd)
 
         return None
 
-    def set_PI_parameter(self, motno, propdiv, intdiv, intclip, intinclip):
+    def set_nulloffset_nullrange(self, nulloffset, nullrange):
 
-        propdiv = c.encode_param(propdiv, num_bytes=1)
-        intdiv = c.encode_param(intdiv, num_bytes=2)
-        intclip = c.encode_param(intclip, num_bytes=2)
-        intinclip = c.encode_param(intinclip, num_bytes=1)
+        nulloffset = _encode_param(nulloffset, 'nulloffset', num_bytes=4)
+        nullrange = _encode_param(nullrange, 'nullrange', num_bytes=2)
 
-        cmd = '190{0}{1}{2}{3}{4}'.format(motno, propdiv, intdiv,
-                                          intclip, intinclip)
-        self.send_command(cmd)
+        cmd = '180{0}{1}{2}'.format(self._motno, nulloffset, nullrange)
+        self._send_command(cmd)
+
+        return None
+
+    def set_PI_parameter(self, propdiv, intdiv, intclip, intinpclip):
+
+        propdiv = _encode_param(propdiv, 'propdiv', num_bytes=1)
+        intdiv = _encode_param(intdiv, 'intdiv', num_bytes=2)
+        intclip = _encode_param(intclip, 'intclip', num_bytes=2)
+        intinpclip = _encode_param(intinpclip, 'intinpclip', num_bytes=1)
+
+        cmd = '190{0}{1}{2}{3}{4}'.format(self._motno, propdiv, intdiv,
+                                          intclip, intinpclip)
+        self._send_command(cmd)
 
         return None

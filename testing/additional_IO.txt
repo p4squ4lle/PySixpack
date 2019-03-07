@@ -1,4 +1,0 @@
-im windows programm SQPack:
-
-channelno scheint nur von 0 bis 5 zu gehen (im gegensatz zur beschreibung im
-manual)

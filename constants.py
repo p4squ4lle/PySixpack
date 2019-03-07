@@ -1,3 +1,7 @@
+# =============================================================================
+# Dictonary for decoding action into human readable string
+# =============================================================================
+
 ACTION_DICT = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
                15: 'rotation', (20, 29): 'reference switch search',
                30: 'mechanical reference'}
@@ -28,8 +32,10 @@ R_8u1 = (1, 2**8)
 R_9u = (0, 2**9)
 R_9u1 = (1, 2**9)
 R_10s = (-2**9+1, 2**9)
+R_10u = (0, 2**10)
 R_15u1 = (1, 2**15)
 R_16u = (0, 2**16)
+R_16u1 = (1, 2**16)
 R_31u = (0, 2**31)
 R_32s = (-2**31+1, 2**31)   # +1 or not?
 
@@ -37,61 +43,76 @@ R_32s = (-2**31+1, 2**31)   # +1 or not?
 # Define ranges for axis and global parameter
 # =============================================================================
 
-AXIS_PARAMETER = {'peak_current': R_8u,
-                  'clkdiv': R_5u,
-                  'vmin': R_9u,
-                  'vstart': R_9u,
-                  'divi': (0, 4),
-                  'amax': R_15u1,
-                  'vmax': R_9u1,
-                  'poslimit': R_31u,
-                  'vrefmax': R_9u1,
-                  'nulloffset': R_32s,
-                  'testnull': R_16u,
-                  'propdiv': R_8u1,
-                  'intdiv': R_15u1,
-                  'intclip': R_15u1,
-                  'intinpclip': R_8u,
-                  'targetpos': R_32s,
-                  'posact': R_32s,
-                  'rotvel': R_10s,
-                  }
+PARAMETER_RANGES = {'peak_current': R_8u,
+                    'T0': R_16u1,
+                    'clkdiv': R_5u,
+                    'vmin': R_9u,
+                    'vstart': R_9u,
+                    'divi': (0, 4),
+                    'amax': R_15u1,
+                    'vmax': R_9u1,
+                    'poslimit': R_31u,
+                    'vrefmax': R_9u1,
+                    'nulloffset': R_32s,
+                    'nullrange': R_16u,
+                    'propdiv': R_8u1,
+                    'intdiv': R_15u1,
+                    'intclip': R_15u1,
+                    'intinpclip': R_8u,
+                    'targetpos': R_32s,
+                    'posact': R_32s,
+                    'rotvel': R_10s,
+                    'analogue_value': R_10u,
+                    'channelno': (0, 8),
+                    'table_entry': R_8u,
+                    'table_pointer': (0, 4, 8, 12),
+                    'stop_func_limits': R_10u,
+                    'transmitter_delay': (1, 1001),
+                    'baudratedivisor': R_16u1,
+                    'abort_timeout': (2, 2**16),
+                    'unit_address': R_8u,
+                    'debounce': R_16u
+                    }
 
-GLOBAL_PARAMETER = {}
 
 # =============================================================================
 # Check parameter range, encode and decode parameter
 # =============================================================================
 
 
-def check_paramrange(parameter, value):
-    """Check if value is valid for given parameter_number"""
-    p = str(parameter)
-    v = int(value)
-    DICT = AXIS_PARAMETER if type(p) == str else GLOBAL_PARAMETER
-    if p not in DICT:
-        raise ValueError("parameter", p, DICT)
-    ranges = DICT[p]
+def _check_paramrange(value, parameter):
+    """
+    Check if value lies within corresponding range
+    for given parameter_number
+    """
+
+    if parameter not in PARAMETER_RANGES.keys():
+        raise ValueError('parameter {} not found in dictonary {}'
+                         .format(parameter, PARAMETER_RANGES))
+    ranges = PARAMETER_RANGES[parameter]
     lo = ranges[0]
     hi = ranges[1]
-    NOTINRANGE = False
-    if not (lo <= v < hi):
-            NOTINRANGE = True
-    if NOTINRANGE:
-        raise ValueError("parameter", repr(p), 'range({}, {})'.format(lo, hi))
+    INRANGE = True
+    if not (lo <= value < hi):
+            INRANGE = False
 
-    return p, v
+    return INRANGE, lo, hi
 
 
-def encode_param(param, num_bytes=4):
+def _encode_param(value, paramstr, num_bytes=4):
+
+    inrange, lo, hi = _check_paramrange(value, paramstr)
+    if not inrange:
+        raise ValueError('parameter {} not in range ({}, {})'
+                         .format(paramstr, lo, hi))
 
     max_value = 1 << (8*num_bytes)
 
-    param = int(param)
-    if param < 0:
-        param += max_value
+    v = int(value)
+    if v < 0:
+        v += max_value
 
-    param_hex = '{:x}'.format(param)
+    param_hex = '{:X}'.format(v)
 
     checksum = 2 * num_bytes - len(param_hex)
     if checksum != 0:
@@ -104,7 +125,7 @@ def encode_param(param, num_bytes=4):
     return parameter
 
 
-def decode_param(param, signed=True):
+def _decode_param(param, signed=True):
 
     max_value = 1 << (8 * len(param))
 
@@ -116,12 +137,30 @@ def decode_param(param, signed=True):
     return value
 
 
-def encode_mask(mask):
-    # if len(mask) > 8:
-        # raise Inputerror
+def _encode_mask(mask):
+
     try:
-        mask = int(mask, 2)
-        return '{:02x}'.format(mask)
+        maskint = int(mask, 2)
+        if maskint >= 64:
+            raise ValueError('given mask is ambiguous ({})'.format(mask))
+        return '{:02X}'.format(maskint)
     except TypeError as error:
-        print('the given mask has to be of type string ({})'
+        print('the given mask has to be of type string (error: {})'
               .format(repr(error)))
+
+
+def _encode_debounce(debounce):
+
+    debounce = int(debounce)
+    if debounce not in range(0, 32, 2):
+        raise ValueError('Error: reference switch de-bouncing time is',
+                         'not in range ( 0, 32, 2)')
+
+    i = int(debounce/2 + 1)
+    debounce = 0
+    for j in range(i):
+        debounce += 2**j
+
+    debounce = _encode_param(debounce, 'debounce', num_bytes=2)
+
+    return debounce

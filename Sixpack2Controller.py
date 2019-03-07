@@ -3,7 +3,7 @@
 from serial import Serial
 from collections import OrderedDict
 from Sixpack2Motor import Sixpack2Motor
-import constants as c
+from constants import *
 
 
 class SIXpack2Controller(list):
@@ -24,8 +24,6 @@ class SIXpack2Controller(list):
 
         self._sixpack_addr = sixpack_addr
         self._resp_addr = resp_addr
-        # sixpack & resp addr müssen als string im hex format angegeben werden
-        # (z.B. '00')
         self.num_motors = num_motors
 
         self._create_motors()
@@ -38,12 +36,14 @@ class SIXpack2Controller(list):
 
         self.last_command = ''
         self.last_request = ''
-        self.status_dict = {'motor{}'.format(i): 'N.a.'
+        self.status_dict = {'motor{}'.format(i): {'action': None,
+                                                  'position': None,
+                                                  'velocity': None}
                             for i in range(self.num_motors)}
 
-        self.reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
-                                                'p1', 'p2', 'p3',
-                                                'p4', 'p5', 'p6'])
+        self._reply_dict = OrderedDict.fromkeys(['addr', 'cmd', 'p0',
+                                                 'p1', 'p2', 'p3',
+                                                 'p4', 'p5', 'p6'])
 
     # ========================================================================
     # Initialize Sixpack Motors
@@ -58,7 +58,7 @@ class SIXpack2Controller(list):
     # Send command and request reply
     # ========================================================================
 
-    def send_command(self, command):
+    def __send_command(self, command):
         """
         Encodes and sends command to the PACK.
         """
@@ -72,7 +72,7 @@ class SIXpack2Controller(list):
 
         return None
 
-    def send_request(self, request):
+    def _send_request(self, request):
         """
         Encodes and sends request to the PACK.
         Receives reply bytes, transcodes them into integer numbers
@@ -89,12 +89,6 @@ class SIXpack2Controller(list):
         self._ser.reset_input_buffer()
         reply_bytes = self._ser.read(9)
         reply_hex = reply_bytes.hex()
-
-        if reply_hex[0:2] != self._sixpack_addr:
-            raise UserWarning('sixpack address in reply {} does not match'
-                              .format(reply_hex[0:2]),
-                              'initialized sixpack address{}'
-                              .format(self._sixpack_addr))
 
         if reply_hex[2:4] != request[2:4]:
             raise UserWarning('Warning: Response command nr ({0}) does not'
@@ -117,19 +111,19 @@ class SIXpack2Controller(list):
         """
 
         request = '43{0}'.format(self._resp_addr) + 6*'00'
-        reply = self.send_request(request)
+        reply = self._send_request(request)
 
         firmware = reply['p0']
         firmware = '.'.join(str(firmware))
 
         reset_flag = reply['p1']
 
-        pack_temp = c.decode_param([reply['p2']])
+        pack_temp = _decode_param([reply['p2']])
 
         serial_n = list(reply.values())[5:9]
-        serial_n = c.decode_param(serial_n, signed=False)
+        serial_n = _decode_param(serial_n, signed=False)
 
-        # serial_n = c.decode_param([reply['p3'], reply['p4']
+        # serial_n = _decode_param([reply['p3'], reply['p4']
         #                            reply['p5'], reply['p6']],
         #                            signed=False)
 
@@ -150,18 +144,21 @@ class SIXpack2Controller(list):
         The response is written in the status_dict dictonary.
         """
 
-        mask = c.encode_mask(mask)
+        mask = _encode_mask(mask)
 
         request = '28{0}{1}'.format(self._resp_addr, mask) + 5 * '00'
-        reply = self.send_request(request)
+        reply = self._send_request(request)
 
         for i in range(self.num_motors):
             act = reply['p{}'.format(i)]
-            if act in c.ACTION_DICT:
-                self.status_dict['motor{}'.format(i)] = c.ACTION_DICT[act]
+            if act in ACTION_DICT:
+                self.status_dict[
+                                'motor{}'.format(i)
+                                ]['action'] = ACTION_DICT[act]
             elif 20 <= act <= 29:
-                    self.status_dict['motor{}'.format(i)] = 'reference switch'
-                    'search'
+                self.status_dict[
+                                'motor{}'.format(i)
+                                ]['action'] = 'reference switch search'
             else:
                 raise UserWarning('reply action ({0}) for motor {1} seems to'
                                   .format(act, i), 'be incorrect and was not'
@@ -178,14 +175,14 @@ class SIXpack2Controller(list):
          0: motor masked, 1: start motor)
         """
 
-        mask = c.encode_mask(mask)
+        mask = _encode_mask(mask)
 
         command = '29{}'.format(mask) + 6 * '00'
-        self.send_command(command)
+        self._send_command(command)
 
         return None
 
-    def stop_motors(self, mask='000000'):
+    def stop_motors(self, mask='111111'):
         """
         Stop multiple motors at the same time. This command sets the target
         position of each concerned motor equal to its actual position. However
@@ -196,10 +193,10 @@ class SIXpack2Controller(list):
          0: motor masked, 1: set target position to actual position)
         """
 
-        mask = c.encode_mask(mask)
+        mask = _encode_mask(mask)
 
         command = '2A{0}'.format(mask) + 6 * '00'
-        self.send_command(command)
+        self._send_command(command)
 
         return None
 
@@ -208,30 +205,30 @@ class SIXpack2Controller(list):
     # ========================================================================
 
     def set_velocity(self, clkdiv=5):
-        # check formatting of encode_param if num_bytes=1, 2 ...
 
-        clkdiv = c.encode_param(clkdiv, num_bytes=1)
+        clkdiv = _encode_param(clkdiv, 'clkdiv', num_bytes=1)
         command = '12{}'.format(clkdiv) + 6 * '00'
-        self.send_command(command)
+        self._send_command(command)
 
         return None
 
-    def write_motor_char_table(self, pointer, entries):
+    def write_motor_char_table(self, pointer, entrylist):
         # nochmal vestehen was die funktion genau macht
 
-        if pointer % 4 != 0:
-            raise ValueError('Parameter pointer not allowed.'
-                             'Allowed values: 0, 4, 8, 12. (value given: {})'
-                             .format(pointer))
+        if type(entrylist) != list:
+            raise TypeError('given entry list has to be of type list',
+                            '([ entry0, entry1, entry2, entry3];',
+                            'type of given entry list: {}'
+                            .format(type(entrylist)))
+
         else:
-            pointer = c.encode_param(pointer, num_bytes=1)
+            pointer = _encode_param(pointer, 'table_pointer', num_bytes=1)
 
-        for i, v in enumerate(entries):
-            entries[i] = c.encode_param(v, num_bytes=1)
+        for i, v in enumerate(entrylist):
+            entrylist[i] = _encode_param(v, 'table_entry', num_bytes=1)
 
-        cmd = '17{0}{1}{2}{3}{4}'.format(pointer, *entries) + 2 * '00'
-        # weiß nich ob das so funktioniert
-        self.send_command(cmd)
+        cmd = '17{0}{1}{2}{3}{4}'.format(pointer, *entrylist) + 2 * '00'
+        self._send_command(cmd)
 
         return None
 
@@ -241,10 +238,10 @@ class SIXpack2Controller(list):
 
     def read_input_channels(self, channelno):
 
-        channelno = c.encode_param(channelno, num_bytes=1)
+        channelno = _encode_param(channelno, 'channelno', num_bytes=1)
 
         request = '30{0}{1}'.format(channelno, self._resp_addr) + 5 * '00'
-        reply = self.send_request(request)
+        reply = self._send_request(request)
 
         channelno = reply['p0']
 
@@ -264,13 +261,16 @@ class SIXpack2Controller(list):
     def set_limits_stop_func(self, channelno,
                              min_value_left=0,
                              max_value_right=1023):
+        channelno = _encode_param(channelno, 'channelno', num_bytes=1)
 
-        min_value_left = c.encode_param(min_value_left, num_bytes=2)
-        max_value_right = c.encode_param(max_value_right, num_bytes=2)
+        min_value_left = _encode_param(min_value_left, 'stop_func_limits',
+                                       num_bytes=2)
+        max_value_right = _encode_param(max_value_right, 'stop_func_limits',
+                                        num_bytes=2)
 
-        cmd = '310{0}{1}{2}'.format(channelno, min_value_left, max_value_right)
+        cmd = '31{0}{1}{2}'.format(channelno, min_value_left, max_value_right)
         cmd += 2 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
@@ -281,17 +281,17 @@ class SIXpack2Controller(list):
                                        logic_state_TTLIO1, TTLOUT1_ready)
         cmd += 3 * '00'
 
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
     def set_ready_output_func(self, motormask, refsearchmask):
 
-        motormask = c.encode_mask(motormask)
-        refsearchmask = c.encode_mask(refsearchmask)
+        motormask = _encode_mask(motormask)
+        refsearchmask = _encode_mask(refsearchmask)
 
         cmd = '33{0}{1}'.format(motormask, refsearchmask) + 5 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
@@ -301,36 +301,41 @@ class SIXpack2Controller(list):
 
     def adjust_baudrate(self, baudratedivisor, transmitter_delay=3):
 
-        baudratedivisor = c.encode_param(baudratedivisor, num_bytes=2)
-        transmitter_delay = c.encode_param(transmitter_delay, num_bytes=2)
+        baudratedivisor = _encode_param(baudratedivisor, 'baudratedivisor',
+                                        num_bytes=2)
+        transmitter_delay = _encode_param(transmitter_delay,
+                                          'transmitter_delay',
+                                          num_bytes=2)
 
         cmd = '40{0}{1}'.format(baudratedivisor, transmitter_delay) + 3 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
     def set_abort_timeout(self, abort_timeout):
 
-        abort_timeout = c.encode_param(abort_timeout, num_bytes=2)
+        abort_timeout = _encode_param(abort_timeout, 'abort_timeout',
+                                      num_bytes=2)
 
         cmd = '41{0}'.format(abort_timeout) + 5 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
     def change_unit_address(self, unit_address):
 
-        unit_address = c.encode_param(unit_address, num_bytes=1)
+        unit_address = _encode_param(unit_address, 'unit_address', num_bytes=1)
 
         cmd = '42{0}'.format(unit_address) + 6 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
+        self._sixpack_addr = unit_address
 
         return None
 
     def complete_hwreset(self):
 
         cmd = 'CC' + 7 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
@@ -340,10 +345,10 @@ class SIXpack2Controller(list):
 
     def start_multi_movement(self, motormask):
 
-        motormask = c.encode_mask(motormask)
+        motormask = _encode_mask(motormask)
 
         cmd = '50{0}'.format(motormask) + 6 * '00'
-        self.send_command(cmd)
+        self._send_command(cmd)
 
         return None
 
