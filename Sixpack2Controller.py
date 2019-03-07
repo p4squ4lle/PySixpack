@@ -6,7 +6,7 @@ from Sixpack2Motor import Sixpack2Motor
 from constants import *
 
 
-class SIXpack2Controller(list):
+class Sixpack2Controller(list):
     # =========================================================================
     # Initialize Sixpack Controller
     # =========================================================================

@@ -1,16 +1,9 @@
 #!/usr/bin/env python
 
-# sachen zum testen: apply_settings(dict) beim initialisieren von 'ser'
-#                    ser.read(9)
-#                    ser.readlines()
-#                    ser.flush()
-#                    ser.in_waiting()
-#                    ser.out_waiting()
-
 from serial import Serial
 from collections import OrderedDict
 
-ser = Serial(port='/dev/ttyUSB3',
+ser = Serial(port='/dev/ttySIXPACK',
              baudrate=19200,
              timeout=5)
 
