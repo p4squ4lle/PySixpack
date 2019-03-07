@@ -12,7 +12,17 @@
 
 - mglw. auch noch andere variablen verschleiern: last_request usw.
 
-- windows programm: other_settings.txt, seriennr, cmd40: baudratedivisor
+- windows programm: other_settings.txt, seriennr,
+
+                    cmd40: baudratedivisor: baud: 'p0 p1'
+                                            300: '46 10'
+                                            1200: '11 04'
+                                            2400: '08 02'
+                                            4800: '04 01'
+                                            9600: '82 00'
+                                            19200: '41 00'
+                                            38400: '20 00'
+                                            57600: '15 00'
 
 - bei ref_search_params() in motor.py evtl dass 'auf stillstand aller motoren warten' in eigene fkt auslagern
 
