@@ -11,7 +11,7 @@ class SIXpack2Controller(list):
     # Initialize Sixpack Controller
     # =========================================================================
 
-    def __init__(self, port='/dev/ttyUSB3',
+    def __init__(self, port='/dev/ttySIXPACK',
                  baudrate=19200, timeout=None,
                  sixpack_addr='00', resp_addr='00', num_motors=1):
 

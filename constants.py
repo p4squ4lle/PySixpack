@@ -1,5 +1,5 @@
 # =============================================================================
-# Dictonary for decoding action into human readable string
+# Dictonary for decoding action code into human readable string
 # =============================================================================
 
 ACTION_DICT = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
@@ -7,10 +7,10 @@ ACTION_DICT = {0: 'inactive', 5: 'ramping', 10: 'PI-controller',
                30: 'mechanical reference'}
 
 # =============================================================================
-# Current control
+# Current control dictonary (key = current in %, value = code to be given)
+# to the PACK
 # =============================================================================
 
-# key = current in %, value = code to be given
 
 I_DICT = {0: 8,
           9: 7,
@@ -40,7 +40,7 @@ R_31u = (0, 2**31)
 R_32s = (-2**31+1, 2**31)   # +1 or not?
 
 # =============================================================================
-# Define ranges for axis and global parameter
+# Define ranges for all parameters
 # =============================================================================
 
 PARAMETER_RANGES = {'peak_current': R_8u,
