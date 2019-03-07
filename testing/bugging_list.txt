@@ -4,6 +4,7 @@
     - mal ne falsche mask geben mit mehr als sechs bits
 
 - bei __del__() wirklich die ctrl variable freigeben
+- __del__() für motor implementieren mit pop() fkt.
 
 - query_all : rotation mit velocity angeben; evlt im status_dict auch velocity und pos angeben.
               im status_dict vlt. auch nur integer nummern von 0 - num_motors als keys hernehmen
